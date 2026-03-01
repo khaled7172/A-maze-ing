@@ -1,0 +1,4 @@
+if config.perfect:
+    # use DFS algorithm to make perfect maze
+else:
+    # maybe allow loops or random generation
