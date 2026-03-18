@@ -1,0 +1,213 @@
+"""Maze generation module using recursive DFS backtracker.
+
+Wall encoding (bitmask per cell):
+    Bit 0 (1) = North
+    Bit 1 (2) = East
+    Bit 2 (4) = South
+    Bit 3 (8) = West
+A set bit means the wall is CLOSED (present).
+"""
+
+import random
+import sys
+from typing import List
+
+from maze.config import MazeConfig
+
+NORTH = 1
+EAST = 2
+SOUTH = 4
+WEST = 8
+
+ALL_WALLS = 15
+
+# (dx, dy, wall on current cell, opposite wall on neighbour)
+DIRS = [
+    (0, -1, NORTH, SOUTH),
+    (1, 0, EAST, WEST),
+    (0, 1, SOUTH, NORTH),
+    (-1, 0, WEST, EAST),
+]
+
+# "42" pixel font — each digit is a list of (col, row) offsets
+# rendered in a 3-wide x 5-tall grid per digit, gap of 1 col between digits
+_DIGIT_4 = [
+    (0, 0), (0, 1), (0, 2),
+    (1, 2), (2, 2),
+    (2, 0), (2, 1), (2, 2), (2, 3), (2, 4),
+]
+_DIGIT_2 = [
+    (0, 0), (1, 0), (2, 0),
+    (2, 1),
+    (0, 2), (1, 2), (2, 2),
+    (0, 3),
+    (0, 4), (1, 4), (2, 4),
+]
+
+# Minimum maze size to fit the "42" pattern (2 digits * 3 wide + 1 gap + 2 border)
+_42_MIN_WIDTH = 10
+_42_MIN_HEIGHT = 9
+
+
+def _get_42_cells(
+    offset_x: int, offset_y: int
+) -> list[tuple[int, int]]:
+    """Return all (x,y) cell coords that form the '42' pattern.
+
+    Args:
+        offset_x: Left margin inside the maze.
+        offset_y: Top margin inside the maze.
+
+    Returns:
+        List of (x, y) cell coordinates to be fully walled.
+    """
+    cells: list[tuple[int, int]] = []
+    for col, row in _DIGIT_4:
+        cells.append((offset_x + col, offset_y + row))
+    for col, row in _DIGIT_2:
+        cells.append((offset_x + 4 + col, offset_y + row))  # 4 = digit width + gap
+    return cells
+
+
+class MazeGenerator:
+    """Generate a maze using recursive DFS (perfect maze by default).
+
+    Args:
+        config: A MazeConfig instance with all generation parameters.
+
+    Example::
+
+        from maze.config import MazeConfig
+        from maze.maze_generator import MazeGenerator
+
+        cfg = MazeConfig(
+            width=20, height=20,
+            entry=(0, 0), exit=(19, 19),
+            perfect=True, output_file="maze.txt", seed=42
+        )
+        gen = MazeGenerator(cfg)
+        maze = gen.generate()   # List[List[int]] — bitmask per cell
+        gen.save_hex()          # writes output file
+    """
+
+    def __init__(self, config: MazeConfig) -> None:
+        """Initialise generator with a MazeConfig."""
+        self.config = config
+        self.visited: List[List[bool]] = [
+            [False] * config.width for _ in range(config.height)
+        ]
+        self.rand = random.Random(config.seed)
+        self.maze: List[List[int]] = self._init_empty_maze()
+        self._42_cells: list[tuple[int, int]] = []
+
+    def _init_empty_maze(self) -> List[List[int]]:
+        """Return a grid where every cell has all four walls closed."""
+        return [
+            [ALL_WALLS for _ in range(self.config.width)]
+            for _ in range(self.config.height)
+        ]
+
+    def _open_walls(
+        self, x: int, y: int, nx: int, ny: int,
+        wall_here: int, wall_there: int
+    ) -> None:
+        """Remove the shared wall between (x,y) and (nx,ny).
+
+        Args:
+            x, y: Current cell coordinates.
+            nx, ny: Neighbour cell coordinates.
+            wall_here: Wall bit to clear on the current cell.
+            wall_there: Wall bit to clear on the neighbour cell.
+        """
+        self.maze[y][x] &= ~wall_here
+        self.maze[ny][nx] &= ~wall_there
+
+    def _dfs(self, x: int, y: int) -> None:
+        """Recursively carve passages via DFS backtracker.
+
+        Args:
+            x: Starting cell x coordinate.
+            y: Starting cell y coordinate.
+        """
+        self.visited[y][x] = True
+        directions = DIRS[:]
+        self.rand.shuffle(directions)
+
+        for dx, dy, wall_here, wall_there in directions:
+            nx, ny = x + dx, y + dy
+            if (
+                0 <= nx < self.config.width
+                and 0 <= ny < self.config.height
+                and not self.visited[ny][nx]
+                and (nx, ny) not in set(self._42_cells)
+            ):
+                self._open_walls(x, y, nx, ny, wall_here, wall_there)
+                self._dfs(nx, ny)
+
+    def _embed_42(self) -> None:
+        """Mark cells forming '42' as visited so DFS skips them.
+
+        Prints a warning if the maze is too small to fit the pattern.
+        """
+        w, h = self.config.width, self.config.height
+        if w < _42_MIN_WIDTH or h < _42_MIN_HEIGHT:
+            print(
+                f"Warning: maze ({w}x{h}) is too small to display "
+                "the '42' pattern. Skipping.",
+                file=sys.stderr,
+            )
+            return
+
+        # Centre the pattern
+        pattern_w = 7  # 3 + 1 gap + 3
+        pattern_h = 5
+        offset_x = (w - pattern_w) // 2
+        offset_y = (h - pattern_h) // 2
+
+        self._42_cells = _get_42_cells(offset_x, offset_y)
+        for cx, cy in self._42_cells:
+            self.visited[cy][cx] = True  # DFS will never enter these cells
+
+    def generate(self) -> List[List[int]]:
+        """Generate and return the maze grid.
+
+        Returns:
+            2-D list of ints — each int is a 4-bit wall bitmask.
+        """
+        self._embed_42()
+        x, y = self.config.entry
+        self._dfs(x, y)
+        return self.maze
+
+    def save_hex(self, solution_path: list[tuple[int, int]] | None = None) -> None:
+        path = self.config.output_file
+        with open(path, "w") as f:
+            for row in self.maze:
+                f.write("".join(format(cell, "X") for cell in row) + "\n")
+
+            if solution_path:
+                ex, ey = self.config.entry
+                ox, oy = self.config.exit
+                directions = _path_to_directions(solution_path)
+                f.write("\n")
+                f.write(f"{ex},{ey}\n")
+                f.write(f"{ox},{oy}\n")
+                f.write("".join(directions) + "\n")
+
+
+def _path_to_directions(path: list[tuple[int, int]]) -> list[str]:
+
+    dirs: list[str] = []
+    for i in range(len(path) - 1):
+        x0, y0 = path[i]
+        x1, y1 = path[i + 1]
+        dx, dy = x1 - x0, y1 - y0
+        if dx == 1:
+            dirs.append("E")
+        elif dx == -1:
+            dirs.append("W")
+        elif dy == -1:
+            dirs.append("N")
+        elif dy == 1:
+            dirs.append("S")
+    return dirs
