@@ -11,6 +11,7 @@ This creates a class, its like a blue print for storing maze settings
 for you so you dont have to write def __init__(self, width,...)
 """
 
+
 @dataclass
 class MazeConfig:
     """Hold all parameters needed to generate and save a maze.
@@ -27,12 +28,12 @@ class MazeConfig:
 
     width: int
     height: int
-    entry: tuple[int, int] #  means entry must be a tuple containing 2 ints
+    entry: tuple[int, int]  # means entry must be a tuple containing 2 ints
     exit: tuple[int, int]
     perfect: bool
     output_file: str
-    #  seed is to make maze generation reproducible, its optional and defaults to None
-    #  if not available
+    #  seed is to make maze generation reproducible, its optional and
+    #  defaults to None if not available
     seed: int | None = None
 
 
@@ -40,6 +41,7 @@ class MazeConfig:
 This function takes one argument, the config, which is expected to be the
 filename called with load_config("config.txt")
 """
+
 
 def load_config(config: str) -> MazeConfig:
     """Read a config file and return a MazeConfig object.
@@ -136,7 +138,7 @@ def load_config(config: str) -> MazeConfig:
     for k in required:
         if k not in temp_config:
             raise ValueError(f"Missing required config key: '{k.upper()}'")
-        
+
     """
     This unpacks the coordinates and checks three things
     If Entry is inside the grid
@@ -159,7 +161,7 @@ def load_config(config: str) -> MazeConfig:
             f"EXIT ({ox},{oy}) is out of bounds for maze {width}x{height}")
     if (ex, ey) == (ox, oy):
         raise ValueError("ENTRY and EXIT cannot be the same cell")
-    
+
     """
     This create the final MazeConfig object and returns it
     """
