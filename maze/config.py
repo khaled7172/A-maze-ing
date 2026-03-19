@@ -35,6 +35,7 @@ class MazeConfig:
     #  seed is to make maze generation reproducible, its optional and
     #  defaults to None if not available
     seed: int | None = None
+    algorithm: str = "DFS"
 
 
 """
@@ -128,6 +129,10 @@ def load_config(config: str) -> MazeConfig:
             temp_config["output_file"] = value
         elif key == "SEED":
             temp_config["seed"] = int(value)
+        elif key == "ALGORITHM":
+            if value.upper() not in ("DFS", "PRIMS"):
+                raise ValueError("ALGORITHM must be 'DFS' or 'PRIMS'")
+            temp_config["algorithm"] = value.upper()
 
     """
     This creates a list of all the keys that must be present.
@@ -173,4 +178,5 @@ def load_config(config: str) -> MazeConfig:
         perfect=temp_config["perfect"],
         output_file=temp_config["output_file"],
         seed=temp_config.get("seed"),
+        algorithm=temp_config.get("algorithm", "DFS"),
     )

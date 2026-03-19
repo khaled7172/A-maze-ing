@@ -262,10 +262,54 @@ class MazeGenerator:
         """
         self._embed_42()
         x, y = self.config.entry
-        self._dfs(x, y)
+        if self.config.algorithm == "PRIMS":
+            self._prims(x, y)
+        else:
+            self._dfs(x, y)
         if not self.config.perfect:
             self._add_loops()
         return self.maze
+    
+    def _prims(self, x: int, y: int) -> None:
+        """Generate maze using Prim's algorithm.
+
+        Args:
+        x: Starting cell x coordinate.
+        y: Starting cell y coordinate.
+        """
+        self.visited[y][x] = True
+        frontiers = []
+
+        for dx, dy, wall_here, wall_there in DIRS:
+            nx, ny = x + dx, y + dy
+            if (
+                0 <= nx < self.config.width
+                and 0 <= ny < self.config.height
+                and not self.visited[ny][nx]
+                and (nx, ny) not in self._42_cells_set
+            ):
+                frontiers.append((nx, ny, x, y, wall_there, wall_here))
+
+        while frontiers:
+            idx = self.rand.randint(0, len(frontiers) - 1)
+            nx, ny, px, py, wall_here, wall_there = frontiers.pop(idx)
+
+            if self.visited[ny][nx]:
+                continue
+
+            self._open_walls(px, py, nx, ny, wall_there, wall_here)
+            self.visited[ny][nx] = True
+
+            for dx, dy, wh, wt in DIRS:
+                nnx, nny = nx + dx, ny + dy
+                if (
+                    0 <= nnx < self.config.width
+                    and 0 <= nny < self.config.height
+                    and not self.visited[nny][nnx]
+                    and (nnx, nny) not in self._42_cells_set
+                ):
+                    frontiers.append((nnx, nny, nx, ny, wt, wh))
+        
 
     def _add_loops(self) -> None:
         """Remove random interior walls to create loops for imperfect maze."""
