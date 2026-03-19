@@ -157,8 +157,8 @@ A set bit means the wall is **closed**. Example: `maze[0][0] & 1` is truthy if t
 ## Team & Project management
 
 ### Roles
-- \khhammou: display.py, a_maze_ing.py, _add_loops, bonus prim's algorithm, Makefile, bug fixes and testing
-- \mkhanji: config.py, maze_generator.py, maze_solver.py, pyproject.toml
+- khhammou: display.py, a_maze_ing.py, _add_loops, bonus prim's algorithm, Makefile, bug fixes and testing
+- mkhanji: config.py, maze_generator.py, maze_solver.py, pyproject.toml
 
 ### Planning
 - Day 1–2: Config parser, maze generator, solver
