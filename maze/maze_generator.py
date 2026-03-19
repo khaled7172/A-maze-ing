@@ -94,7 +94,8 @@ _DIGIT_2 = [
     (0, 4), (1, 4), (2, 4),
 ]
 
-# Minimum maze size to fit the "42" pattern (2 digits * 3 wide + 1 gap + 2 border)
+# Minimum maze size to fit the "42" pattern (2 digits * 3 wide + 1 gap + 2
+# border)
 _42_MIN_WIDTH = 10
 _42_MIN_HEIGHT = 9
 
@@ -113,7 +114,8 @@ def _get_42_cells(offset_x: int, offset_y: int) -> list[tuple[int, int]]:
     for col, row in _DIGIT_4:
         cells.append((offset_x + col, offset_y + row))
     for col, row in _DIGIT_2:
-        cells.append((offset_x + 4 + col, offset_y + row))  #  4 = digit width + gap
+        # 4 = digit width + gap
+        cells.append((offset_x + 4 + col, offset_y + row))
     return cells
 
 
@@ -155,9 +157,10 @@ class MazeGenerator:
         self._42_cells_set: set[tuple[int, int]] = set()
 
     """
-    This creates the maze grid, Every cells starts at ALL_WALLS which is 15 
+    This creates the maze grid, Every cells starts at ALL_WALLS which is 15
     all walls closed
     """
+
     def _init_empty_maze(self) -> List[List[int]]:
         """Return a grid where every cell has all four walls closed."""
         return [
@@ -165,8 +168,14 @@ class MazeGenerator:
             for _ in range(self.config.height)
         ]
 
-    def _open_walls(self, x: int, y: int, nx: int, ny: int, wall_here: int, wall_there: int
-    ) -> None:
+    def _open_walls(
+            self,
+            x: int,
+            y: int,
+            nx: int,
+            ny: int,
+            wall_here: int,
+            wall_there: int) -> None:
         """Remove the shared wall between (x,y) and (nx,ny).
 
         Args:
@@ -198,8 +207,8 @@ class MazeGenerator:
         self.rand.shuffle(directions)
         """
         We loop through the shuffled directions
-        for each direction we calculate the neighbor's coordinates by adding the
-        direction offset to the current position
+        for each direction we calculate the neighbor's coordinates by adding
+        the direction offset to the current position
         then we check 4 conditions before moving:
         if neighbor in within horizontal and vertical bounds
         if neighbor hasn't been visited yet
@@ -235,8 +244,8 @@ class MazeGenerator:
             return
 
         # Center the pattern
-        pattern_w = 7  #  7 cells wide (3 for "4", 1 gap, 3 for "2")
-        pattern_h = 5 #  5 cells tall
+        pattern_w = 7  # 7 cells wide (3 for "4", 1 gap, 3 for "2")
+        pattern_h = 5  # 5 cells tall
         offset_x = (w - pattern_w) // 2
         offset_y = (h - pattern_h) // 2
 
@@ -257,6 +266,7 @@ class MazeGenerator:
         if not self.config.perfect:
             self._add_loops()
         return self.maze
+
     def _add_loops(self) -> None:
         """Remove random interior walls to create loops for imperfect maze."""
         w, h = self.config.width, self.config.height
@@ -277,7 +287,9 @@ class MazeGenerator:
     format(cell, "X") converts the cell's number to uppercase hex
     so 15 becomes "F", 9 becomes "9"
     """
-    def save_hex(self, solution_path: list[tuple[int, int]] | None = None) -> None:
+
+    def save_hex(
+            self, solution_path: list[tuple[int, int]] | None = None) -> None:
         path = self.config.output_file
         with open(path, "w") as f:
             for row in self.maze:
@@ -292,12 +304,14 @@ class MazeGenerator:
                 f.write(f"{ox},{oy}\n")
                 f.write("".join(directions) + "\n")
 
+
 """
 This converts a list of coordinates into a list of direction letters
 It loops through the path, looking at each pair of consecutive calls
 for each pair it calculates dx and dy, and the difference between them
 then based on the difference it appends the correct letter
 """
+
 
 def _path_to_directions(path: list[tuple[int, int]]) -> list[str]:
 

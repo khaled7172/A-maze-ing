@@ -16,6 +16,8 @@ generate
 solve
 save
 """
+
+
 def build_maze(
     config: MazeConfig,
     seed: int | None = None,
@@ -43,6 +45,7 @@ def build_maze(
     cells_42: set[tuple[int, int]] = set(gen._42_cells)
     return maze, solution, cells_42
 
+
 """
 sys.argv is the list of command line arguments
 sys.argv[0] is always the script name
@@ -50,9 +53,10 @@ sys.argv[1] is the config file
 if ont exactly one argument it prints usage and exits
 then it loads the config, builds the maze
 launches the interactive display
-maze_factory is a small fucntion passed to interactive so it can regenerate the maze
-when the user presses r
+maze_factory is a small fucntion passed to interactive so it can regenerate
+the maze when the user presses r
 """
+
 
 def main() -> None:
     """Entry point: parse args, build maze, launch interactive display."""
@@ -75,7 +79,9 @@ def main() -> None:
     # print(f"{config}")
     # print(f"solution  {solution}")
 
-    def maze_factory(seed: int) -> tuple[List[List[int]], List[Tuple[int, int]], set[tuple[int, int]]]:
+    def maze_factory(
+            seed: int) -> tuple[List[List[int]], List[Tuple[int, int]],
+                                set[tuple[int, int]]]:
         """Re-generate maze with a new seed for interactive re-draw."""
         return build_maze(config, seed=seed)
 

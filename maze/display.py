@@ -8,12 +8,12 @@ import os
 import sys
 import termios
 import tty
-from typing import List, Tuple
+from typing import List, Tuple, Callable
 
 from maze.config import MazeConfig
 from maze.maze_generator import NORTH, EAST, SOUTH, WEST
 
-# ── ANSI colour codes ──────────────────────────────────────────────────────────
+# ── ANSI colour codes ───────────────────────────────────────────────────
 """
 \033[ is the escape sequence that starts a colour command
 """
@@ -21,13 +21,13 @@ RESET = "\033[0m"
 BOLD = "\033[1m"
 
 COLOURS = {
-    "white":   "\033[97m",
-    "cyan":    "\033[96m",
-    "green":   "\033[92m",
-    "yellow":  "\033[93m",
+    "white": "\033[97m",
+    "cyan": "\033[96m",
+    "green": "\033[92m",
+    "yellow": "\033[93m",
     "magenta": "\033[95m",
-    "blue":    "\033[94m",
-    "red":     "\033[91m",
+    "blue": "\033[94m",
+    "red": "\033[91m",
 }
 
 COLOUR_NAMES = list(COLOURS.keys())
@@ -37,7 +37,7 @@ ENTRY_COLOUR = "\033[93m"   # yellow for S
 EXIT_COLOUR = "\033[91m"    # red for E
 _42_COLOUR = "\033[35m"     # magenta for 42 cells
 
-# ── Box-drawing characters ─────────────────────────────────────────────────────
+# ── Box-drawing characters ──────────────────────────────────────────────
 
 WALL_H = "───"   # horizontal wall segment (3 chars wide to match cell)
 WALL_V = "│"
@@ -52,9 +52,12 @@ CELL_H = 1        # printable rows per cell (between h-walls)
 os.name == "nt" means Windows, so it uses cls
 On Mac/linux it uses clear
 """
+
+
 def _clear() -> None:
     """Clear the terminal screen."""
     os.system("cls" if os.name == "nt" else "clear")
+
 
 """
 This reads a single keypress without waiting for Enter
@@ -68,6 +71,7 @@ termios.tcsetattr(fd, termios.TCSADRAIN, old) restore the original terminal
 settings in the finally block, so even ig something crashes the terminal
 isn't left in raw mode
 """
+
 
 def _getch() -> str:
     """Read a single keypress without waiting for Enter (Unix only).
@@ -84,6 +88,7 @@ def _getch() -> str:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
     return ch
 
+
 """
 This function decides what to draw inside a cell, 3 characters
 It takes the cell coordinates, the config, the solution path,
@@ -96,6 +101,8 @@ if path is visible and this cell is on it
 show a green dot
 otherwise return a space
 """
+
+
 def _cell_content(
     x: int, y: int,
     config: MazeConfig,
@@ -163,7 +170,7 @@ def render(
         top += wc + CORNER + RESET
         lines.append(top)
 
-        # ── Cell row ──────────────────────────────────────────────────────────
+        # ── Cell row ─────────────────────────────────────────────────────────
         mid = ""
         for x in range(w):
             cell = maze[y][x]
@@ -174,7 +181,7 @@ def render(
         mid += (wc + WALL_V + RESET) if (cell & EAST) else HALF_OPEN
         lines.append(mid)
 
-    # ── Bottom border ─────────────────────────────────────────────────────────
+    # ── Bottom border ───────────────────────────────────────────────────────
     bot = ""
     for x in range(w):
         cell = maze[h - 1][x]
@@ -193,7 +200,7 @@ def _print_controls(show_path: bool, colour: str) -> None:
         show_path: Current path visibility state.
         colour: Current wall colour name.
     """
-    path_label = "Hide path [p]" if show_path else "Show path [p]"
+    path_label = "Hide path" if show_path else "Show path"
     print(
         f"\n  {BOLD}[r]{RESET} Re-generate  "
         f"{BOLD}[p]{RESET} {path_label}  "
@@ -203,7 +210,9 @@ def _print_controls(show_path: bool, colour: str) -> None:
 
 
 def interactive(
-    maze_factory,   # callable(seed) -> (maze, solution, cells_42)
+    # callable(seed) -> (maze, solution, cells_42)
+    maze_factory: Callable[[int], tuple[List[List[int]], List[Tuple[int, int]],
+                                        set[tuple[int, int]]]],
     config: MazeConfig,
     initial_maze: List[List[int]],
     initial_solution: List[Tuple[int, int]],
