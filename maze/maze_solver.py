@@ -20,6 +20,19 @@ class MazeSolver:
         ]
         self.path: list[Tuple[int, int]] = []
 
+
+    """
+    Same DFS idea but with two differences:
+    First it returns a bool now
+    True means we found the exit
+    False means dead end
+    This checks if the wall is open before moving
+    cell & wall returns non-zero if wall exists
+    not (...) means wall is open, we can pass
+    When it finds the exit it appends the cell and returns True
+    all the way back up the cell stack, and each level appends itself to the path as it unwinds
+    Thats why self.path.reverse() is needed in solve
+    """
     def _dfs(self, x: int, y: int) -> bool:
 
         if (x, y) == self.config.exit:
@@ -41,7 +54,13 @@ class MazeSolver:
                     return True
 
         return False
-
+    
+    """
+    Launches DFS from entry
+    If no solution found raises an error
+    Otherwise reverses the path, because cells were appended as DFS unwound
+    so the path is backwards
+    """
     def solve(self) -> List[Tuple[int, int]]:
         """Find and return the solution path from entry to exit.
 

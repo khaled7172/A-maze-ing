@@ -1,5 +1,3 @@
-
-
 import sys
 from typing import List, Tuple
 
@@ -8,7 +6,16 @@ from maze.maze_generator import MazeGenerator
 from maze.maze_solver import MazeSolver
 from maze.display import interactive
 
-
+"""
+This function builds a complete maze and returns 3 things
+maze grid, solution path, and the "42" cells
+If a new seed is passed in, it creates a fresh MazeConfig with that seed
+this is used when the user presses r to regenerate in the interactive display
+Then it runs everything in order
+generate
+solve
+save
+"""
 def build_maze(
     config: MazeConfig,
     seed: int | None = None,
@@ -36,6 +43,16 @@ def build_maze(
     cells_42: set[tuple[int, int]] = set(gen._42_cells)
     return maze, solution, cells_42
 
+"""
+sys.argv is the list of command line arguments
+sys.argv[0] is always the script name
+sys.argv[1] is the config file
+if ont exactly one argument it prints usage and exits
+then it loads the config, builds the maze
+launches the interactive display
+maze_factory is a small fucntion passed to interactive so it can regenerate the maze
+when the user presses r
+"""
 
 def main() -> None:
     """Entry point: parse args, build maze, launch interactive display."""

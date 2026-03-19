@@ -1,11 +1,51 @@
-"""Maze generation module using recursive DFS backtracker.
-
+"""
+Maze generation module using recursive DFS backtracker.
 Wall encoding (bitmask per cell):
     Bit 0 (1) = North
     Bit 1 (2) = East
     Bit 2 (4) = South
     Bit 3 (8) = West
 A set bit means the wall is CLOSED (present).
+Example North and west walls closed, else are open
+that means:
+north = 1
+east = 0
+south = 0
+west = 1
+Read as a binary number 1001(9 in decimal)
+so the cell gets stored as just the number 9
+one number represents 4 walls(bit masking)
+1111 all bits on, all walls closed
+when maze starts every cell is 15 all walls closed
+Generator then knocks walls down to carve paths
+To open a wall we use the &= and ~ oprators together
+if we want to open the north wall of a cell all walls closed 1111
+North = 1 = 0001
+First we flip it with ~:
+~NORTH = ~0001 = 1110
+Then we AND it with the cell:
+    1111(cells)
+&   1110(North)
+    ----
+    1110
+In code that looks like:
+self.maze[y][x] &= ~NORTH
+The north bit is now zero, and the wall is gone
+Checking if a wall exists:
+We use & to check
+If we want to check if the north wall is closed
+if cell & NORTH:
+    #  wall is there
+In binary:
+    1110
+&   0001
+    ----
+    0000 = 0 = False -> no wall
+
+    1111
+&   0001
+    ----
+    0001 = 1 = True -> wall exists
 """
 
 import random
@@ -21,6 +61,16 @@ WEST = 8
 
 ALL_WALLS = 15
 
+"""
+This is a list of the 4 possible directions to move.
+Each tuple has 4 values:
+dx, dy how to move in the grid
+the wall in the current cell
+the wall on the neighbor cell
+(0, -1, NORTH, SOUTH) means move up (y decreases)
+and if we do, we open the north wall of the current cell
+and the south wall of the neighbbor
+"""
 # (dx, dy, wall on current cell, opposite wall on neighbour)
 DIRS = [
     (0, -1, NORTH, SOUTH),
@@ -49,9 +99,7 @@ _42_MIN_WIDTH = 10
 _42_MIN_HEIGHT = 9
 
 
-def _get_42_cells(
-    offset_x: int, offset_y: int
-) -> list[tuple[int, int]]:
+def _get_42_cells(offset_x: int, offset_y: int) -> list[tuple[int, int]]:
     """Return all (x,y) cell coords that form the '42' pattern.
 
     Args:
@@ -65,7 +113,7 @@ def _get_42_cells(
     for col, row in _DIGIT_4:
         cells.append((offset_x + col, offset_y + row))
     for col, row in _DIGIT_2:
-        cells.append((offset_x + 4 + col, offset_y + row))  # 4 = digit width + gap
+        cells.append((offset_x + 4 + col, offset_y + row))  #  4 = digit width + gap
     return cells
 
 
@@ -83,8 +131,7 @@ class MazeGenerator:
         cfg = MazeConfig(
             width=20, height=20,
             entry=(0, 0), exit=(19, 19),
-            perfect=True, output_file="maze.txt", seed=42
-        )
+            perfect=True, output_file="maze.txt", seed=42)
         gen = MazeGenerator(cfg)
         maze = gen.generate()   # List[List[int]] — bitmask per cell
         gen.save_hex()          # writes output file
@@ -96,10 +143,20 @@ class MazeGenerator:
         self.visited: List[List[bool]] = [
             [False] * config.width for _ in range(config.height)
         ]
+        """
+        random.Random() creates a private random number generator
+        its locked to the seed
+        will always produce the same sequence of random numbers
+        same seed, same maze everytime
+        """
         self.rand = random.Random(config.seed)
         self.maze: List[List[int]] = self._init_empty_maze()
         self._42_cells: list[tuple[int, int]] = []
 
+    """
+    This creates the maze grid, Every cells starts at ALL_WALLS which is 15 
+    all walls closed
+    """
     def _init_empty_maze(self) -> List[List[int]]:
         """Return a grid where every cell has all four walls closed."""
         return [
@@ -107,9 +164,7 @@ class MazeGenerator:
             for _ in range(self.config.height)
         ]
 
-    def _open_walls(
-        self, x: int, y: int, nx: int, ny: int,
-        wall_here: int, wall_there: int
+    def _open_walls(self, x: int, y: int, nx: int, ny: int, wall_here: int, wall_there: int
     ) -> None:
         """Remove the shared wall between (x,y) and (nx,ny).
 
@@ -129,10 +184,30 @@ class MazeGenerator:
             x: Starting cell x coordinate.
             y: Starting cell y coordinate.
         """
+        """
+        First we mark the current cell visited so we dont come back to it
+        second we copy the DIRS list, The [:] is important, without it
+        shuffling would modify the original DIRS list permanently
+        we want a fresh copy each time
+        last we randomly shuffle the 4 directions, making the maze random
+        we try directions in a different order every time
+        """
         self.visited[y][x] = True
         directions = DIRS[:]
         self.rand.shuffle(directions)
-
+        """
+        We loop through the shuffled directions
+        for each direction we calculate the neighbor's coordinates by adding the
+        direction offset to the current position
+        then we check 4 conditions before moving:
+        if neighbor in within horizontal and vertical bounds
+        if neighbor hasn't been visited yet
+        if it has skip it
+        if neighbor isn't a "42" cell
+        if all 4 conditions pass:
+        knock down the wall between current cell and neighbor
+        jump into neighbor and repeat the whole process from there
+        """
         for dx, dy, wall_here, wall_there in directions:
             nx, ny = x + dx, y + dy
             if (
@@ -158,9 +233,9 @@ class MazeGenerator:
             )
             return
 
-        # Centre the pattern
-        pattern_w = 7  # 3 + 1 gap + 3
-        pattern_h = 5
+        # Center the pattern
+        pattern_w = 7  #  7 cells wide (3 for "4", 1 gap, 3 for "2")
+        pattern_h = 5 #  5 cells tall
         offset_x = (w - pattern_w) // 2
         offset_y = (h - pattern_h) // 2
 
@@ -178,7 +253,11 @@ class MazeGenerator:
         x, y = self.config.entry
         self._dfs(x, y)
         return self.maze
-
+    """
+    This writes the maze to a file
+    format(cell, "X") converts the cell's number to uppercase hex
+    so 15 becomes "F", 9 becomes "9"
+    """
     def save_hex(self, solution_path: list[tuple[int, int]] | None = None) -> None:
         path = self.config.output_file
         with open(path, "w") as f:
@@ -194,6 +273,12 @@ class MazeGenerator:
                 f.write(f"{ox},{oy}\n")
                 f.write("".join(directions) + "\n")
 
+"""
+This converts a list of coordinates into a list of direction letters
+It loops through the path, looking at each pair of consecutive calls
+for each pair it calculates dx and dy, and the difference between them
+then based on the difference it appends the correct letter
+"""
 
 def _path_to_directions(path: list[tuple[int, int]]) -> list[str]:
 
