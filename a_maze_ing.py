@@ -72,10 +72,10 @@ def main() -> None:
         print(f"Maze generation error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"{config}")
-    print(f"solution  {solution}")
+    # print(f"{config}")
+    # print(f"solution  {solution}")
 
-    def maze_factory(seed: int):
+    def maze_factory(seed: int) -> tuple[List[List[int]], List[Tuple[int, int]], set[tuple[int, int]]]:
         """Re-generate maze with a new seed for interactive re-draw."""
         return build_maze(config, seed=seed)
 

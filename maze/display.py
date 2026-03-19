@@ -14,7 +14,9 @@ from maze.config import MazeConfig
 from maze.maze_generator import NORTH, EAST, SOUTH, WEST
 
 # ── ANSI colour codes ──────────────────────────────────────────────────────────
-
+"""
+\033[ is the escape sequence that starts a colour command
+"""
 RESET = "\033[0m"
 BOLD = "\033[1m"
 
@@ -46,11 +48,26 @@ HALF_OPEN = " "  # open vertical
 CELL_W = 3        # printable chars per cell horizontally
 CELL_H = 1        # printable rows per cell (between h-walls)
 
-
+"""
+os.name == "nt" means Windows, so it uses cls
+On Mac/linux it uses clear
+"""
 def _clear() -> None:
     """Clear the terminal screen."""
     os.system("cls" if os.name == "nt" else "clear")
 
+"""
+This reads a single keypress without waiting for Enter
+sys.stdin.fileno() gets the file descriptor of the terminal input
+termios.tcgetattr(fd) saves the current terminal settings so we can restore
+them later
+tty.setraw(fd) switches terminal to raw mode where every keypress
+is immediatly available
+sys.stdin.read(1) reads exactly one character
+termios.tcsetattr(fd, termios.TCSADRAIN, old) restore the original terminal
+settings in the finally block, so even ig something crashes the terminal
+isn't left in raw mode
+"""
 
 def _getch() -> str:
     """Read a single keypress without waiting for Enter (Unix only).
@@ -67,7 +84,18 @@ def _getch() -> str:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
     return ch
 
-
+"""
+This function decides what to draw inside a cell, 3 characters
+It takes the cell coordinates, the config, the solution path,
+whether to show the path, and the "42" cells
+First check if the cell is entry or exit
+Entry shows a yellow bold S
+exit shows a red bold E
+if its a 42 cell fill it with magenta
+if path is visible and this cell is on it
+show a green dot
+otherwise return a space
+"""
 def _cell_content(
     x: int, y: int,
     config: MazeConfig,

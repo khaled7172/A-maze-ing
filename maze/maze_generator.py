@@ -152,6 +152,7 @@ class MazeGenerator:
         self.rand = random.Random(config.seed)
         self.maze: List[List[int]] = self._init_empty_maze()
         self._42_cells: list[tuple[int, int]] = []
+        self._42_cells_set: set[tuple[int, int]] = set()
 
     """
     This creates the maze grid, Every cells starts at ALL_WALLS which is 15 
@@ -214,7 +215,7 @@ class MazeGenerator:
                 0 <= nx < self.config.width
                 and 0 <= ny < self.config.height
                 and not self.visited[ny][nx]
-                and (nx, ny) not in set(self._42_cells)
+                and (nx, ny) not in self._42_cells_set
             ):
                 self._open_walls(x, y, nx, ny, wall_here, wall_there)
                 self._dfs(nx, ny)
@@ -240,6 +241,7 @@ class MazeGenerator:
         offset_y = (h - pattern_h) // 2
 
         self._42_cells = _get_42_cells(offset_x, offset_y)
+        self._42_cells_set = set(self._42_cells)
         for cx, cy in self._42_cells:
             self.visited[cy][cx] = True  # DFS will never enter these cells
 
@@ -252,7 +254,24 @@ class MazeGenerator:
         self._embed_42()
         x, y = self.config.entry
         self._dfs(x, y)
+        if not self.config.perfect:
+            self._add_loops()
         return self.maze
+    def _add_loops(self) -> None:
+        """Remove random interior walls to create loops for imperfect maze."""
+        w, h = self.config.width, self.config.height
+        extra = (w * h) // 10  # remove ~10% extra walls
+
+        for _ in range(extra):
+            x = self.rand.randint(0, w - 2)
+            y = self.rand.randint(0, h - 2)
+
+            if (x, y) in self._42_cells_set:
+                continue
+            if (x + 1, y) in self._42_cells_set:
+                continue
+
+            self._open_walls(x, y, x + 1, y, EAST, WEST)
     """
     This writes the maze to a file
     format(cell, "X") converts the cell's number to uppercase hex
