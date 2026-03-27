@@ -75,7 +75,8 @@ class MazeSolver:
         solved = self._dfs(start_x, start_y)
 
         if not solved:
-            raise ValueError(f"No solution found from {self.config.entry} to {self.config.exit}")
+            raise ValueError(f"No solution found from {self.config.entry} to"
+                             f"{self.config.exit}")
 
         self.path.reverse()
         return self.path
