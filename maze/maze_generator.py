@@ -269,7 +269,7 @@ class MazeGenerator:
         if not self.config.perfect:
             self._add_loops()
         return self.maze
-    
+
     def _prims(self, x: int, y: int) -> None:
         """Generate maze using Prim's algorithm.
 
@@ -309,10 +309,11 @@ class MazeGenerator:
                     and (nnx, nny) not in self._42_cells_set
                 ):
                     frontiers.append((nnx, nny, nx, ny, wt, wh))
-        
 
     def _add_loops(self) -> None:
-        """Remove random interior walls to create loops for imperfect maze."""
+        """
+        Remove random interior walls to create loops for imperfect maze.
+        """
         w, h = self.config.width, self.config.height
         extra = (w * h) // 10  # remove ~10% extra walls
 

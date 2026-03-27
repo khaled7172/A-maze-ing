@@ -1,28 +1,32 @@
-import sys
-from typing import List, Tuple
+"""Entry point for the A-Maze-ing maze generator.
 
+Usage:
+    python3 a_maze_ing.py config.txt
+"""
+
+import sys
 from maze.config import MazeConfig, load_config
 from maze.maze_generator import MazeGenerator
 from maze.maze_solver import MazeSolver
 from maze.display import interactive
 
-"""
-This function builds a complete maze and returns 3 things
-maze grid, solution path, and the "42" cells
-If a new seed is passed in, it creates a fresh MazeConfig with that seed
-this is used when the user presses r to regenerate in the interactive display
-Then it runs everything in order
-generate
-solve
-save
-"""
-
 
 def build_maze(
     config: MazeConfig,
     seed: int | None = None,
-) -> tuple[List[List[int]], List[Tuple[int, int]], set[tuple[int, int]]]:
+) -> tuple[list[list[int]], list[tuple[int, int]], set[tuple[int, int]]]:
+    """Build a complete maze: generate, solve, and save to file.
 
+    If seed is provided a fresh MazeConfig is created with that seed,
+    used when the user presses 'r' to regenerate in interactive mode.
+
+    Args:
+        config: Base maze configuration.
+        seed: Optional override seed for regeneration.
+
+    Returns:
+        Tuple of (maze grid, solution path, set of '42' pattern cells).
+    """
     if seed is not None:
         config = MazeConfig(
             width=config.width,
@@ -32,6 +36,7 @@ def build_maze(
             perfect=config.perfect,
             output_file=config.output_file,
             seed=seed,
+            algorithm=config.algorithm,
         )
 
     gen = MazeGenerator(config)
@@ -44,18 +49,6 @@ def build_maze(
 
     cells_42: set[tuple[int, int]] = set(gen._42_cells)
     return maze, solution, cells_42
-
-
-"""
-sys.argv is the list of command line arguments
-sys.argv[0] is always the script name
-sys.argv[1] is the config file
-if ont exactly one argument it prints usage and exits
-then it loads the config, builds the maze
-launches the interactive display
-maze_factory is a small fucntion passed to interactive so it can regenerate
-the maze when the user presses r
-"""
 
 
 def main() -> None:
@@ -72,17 +65,21 @@ def main() -> None:
 
     try:
         maze, solution, cells_42 = build_maze(config)
-    except (ValueError, RecursionError) as e:
+    except (ValueError, RuntimeError) as e:
         print(f"Maze generation error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # print(f"{config}")
-    # print(f"solution  {solution}")
-
     def maze_factory(
-            seed: int) -> tuple[List[List[int]], List[Tuple[int, int]],
-                                set[tuple[int, int]]]:
-        """Re-generate maze with a new seed for interactive re-draw."""
+        seed: int,
+    ) -> tuple[list[list[int]], list[tuple[int, int]], set[tuple[int, int]]]:
+        """Re-generate maze with a new seed for interactive re-draw.
+
+        Args:
+            seed: New seed value.
+
+        Returns:
+            Tuple of (maze grid, solution path, set of '42' pattern cells).
+        """
         return build_maze(config, seed=seed)
 
     interactive(
