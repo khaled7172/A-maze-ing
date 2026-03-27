@@ -1,7 +1,7 @@
 # A-Maze-ing default configuration
 # All keys are mandatory except SEED
 
-WIDTH=10
+WIDTH=9
 HEIGHT=9
 ENTRY=0,0
 EXIT=2,2
