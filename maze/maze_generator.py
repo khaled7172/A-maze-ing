@@ -236,12 +236,8 @@ class MazeGenerator:
         """
         w, h = self.config.width, self.config.height
         if w < _42_MIN_WIDTH or h < _42_MIN_HEIGHT:
-            print(
-                f"Warning: maze ({w}x{h}) is too small to display "
-                "the '42' pattern. Skipping.",
-                file=sys.stderr,
-            )
-            return
+            print(f"Maze ({w}x{h}) too small for '42' pattern.")
+            sys.exit(1)
 
         # Center the pattern
         pattern_w = 7  # 7 cells wide (3 for "4", 1 gap, 3 for "2")
