@@ -1,10 +1,10 @@
 # A-Maze-ing default configuration
 # All keys are mandatory except SEED
 
-WIDTH=7
+WIDTH=10
 HEIGHT=9
 ENTRY=0,0
-EXIT=2,2
+EXIT=9,8
 OUTPUT_FILE=maze.txt
 PERFECT=False
 SEED=42
