@@ -6,7 +6,7 @@
 
 A-Maze-ing is a configurable maze generator, solver, and interactive terminal visualiser written in Python 3.10+.
 
-It generates mazes using the **recursive DFS backtracker** algorithm (also known as the recursive backtracker), which produces *perfect mazes* — mazes with exactly one path between any two cells, equivalent to a spanning tree of the cell graph. The maze is solved with a second DFS pass, and the shortest path is stored in the output file alongside the hex-encoded maze structure.
+It generates mazes using either the **recursive DFS backtracker** or **Prim's algorithm**, both of which produce *perfect mazes* — mazes with exactly one path between any two cells, equivalent to a spanning tree of the cell graph. The maze is solved with a BFS pass guaranteeing the shortest path, which is stored in the output file alongside the hex-encoded maze structure.
 
 The terminal display renders walls using Unicode box-drawing characters with full ANSI colour support and supports interactive re-generation, path toggling, and colour cycling.
 
@@ -69,6 +69,7 @@ One `KEY=VALUE` pair per line. Lines starting with `#` are comments.
 | `OUTPUT_FILE` | string | Output filename (.txt only) | `OUTPUT_FILE=maze.txt` |
 | `PERFECT` | bool | If True, one unique path | `PERFECT=True` |
 | `SEED` | int | Optional RNG seed | `SEED=42` |
+| `ALGORITHM` | string | `DFS` or `PRIMS` | `ALGORITHM=PRIMS` |
 
 ---
 
@@ -85,18 +86,27 @@ SENWS...    ← shortest path as N/E/S/W directions
 
 ---
 
-## Maze generation algorithm
+## Maze generation algorithms
 
-**Recursive DFS Backtracker**
+Two algorithms are available, selected via `ALGORITHM` in the config.
 
-Starting from the entry cell, the algorithm visits unvisited neighbours in a random shuffled order, carving passages (removing shared walls) as it goes. When all neighbours are visited it backtracks. This always produces a perfect maze (spanning tree). The `SEED` option makes generation fully reproducible.
+**Recursive DFS Backtracker (`ALGORITHM=DFS`)**
 
-### Why this algorithm?
+Starting from the entry cell, the algorithm visits unvisited neighbours in a random shuffled order, carving passages (removing shared walls) as it goes. When all neighbours are visited it backtracks. Produces mazes with long winding corridors.
 
-- Simple to implement and understand
-- Produces mazes with long winding corridors — satisfying to solve
-- Naturally guarantees full connectivity (perfect maze)
-- Runs in O(n) time and memory for n cells
+**Prim's Algorithm (`ALGORITHM=PRIMS`)**
+
+Maintains a frontier list of all cells reachable from any already-visited cell and picks one at random to connect. The maze grows outward in all directions simultaneously. Produces mazes with many short branches and a bushier texture.
+
+Both algorithms always produce a perfect maze (spanning tree). The `SEED` option makes generation fully reproducible with either algorithm.
+
+### Why these algorithms?
+
+- Both are simple to implement and understand
+- DFS produces long winding corridors — satisfying to solve
+- Prim's produces a more organic, branchy structure
+- Both naturally guarantee full connectivity (perfect maze)
+- Both run in O(n) time and memory for n cells
 
 ---
 
@@ -168,10 +178,11 @@ A set bit means the wall is **closed**. Example: `maze[0][0] & 1` is truthy if t
 
 ### What worked well
 - The bitmask wall encoding is elegant and efficient
-- DFS for both generation and solving kept the codebase compact
+- BFS for solving guarantees the shortest path
+- DFS and Prim's produce noticeably different maze textures from the same grid structure
 
 ### What could be improved
-- Could add Prim's or Wilson's algorithm as bonus generation modes
+- `_add_loops()` currently only punches horizontal walls (EAST/WEST) — vertical walls should also be candidates for a more balanced imperfect maze
 - MLX graphical display would be more visual
 
 ### Tools used
@@ -191,6 +202,29 @@ A set bit means the wall is **closed**. Example: `maze[0][0] & 1` is truthy if t
 
 Claude (Anthropic) was used for:
 - Reviewing bug in `maze_solver.py` (unnamed 4th DIRS variable, silent empty-path return)
+- Replacing DFS solver with BFS to guarantee shortest path
 - Generating docstrings following PEP 257 / Google style
 - Drafting the README structure
-- All logic was written and understood by the author before use
+def _add_loops(self) -> None:
+    w, h = self.config.width, self.config.height
+    extra = (w * h) // 10
+
+    for _ in range(extra):
+        if self.rand.randint(0, 1) == 0:
+            # punch horizontal wall (EAST/WEST)
+            x = self.rand.randint(0, w - 2)
+            y = self.rand.randint(0, h - 1)
+            if (x, y) in self._42_cells_set:
+                continue
+            if (x + 1, y) in self._42_cells_set:
+                continue
+            self._open_walls(x, y, x + 1, y, EAST, WEST)
+        else:
+            # punch vertical wall (SOUTH/NORTH)
+            x = self.rand.randint(0, w - 1)
+            y = self.rand.randint(0, h - 2)
+            if (x, y) in self._42_cells_set:
+                continue
+            if (x, y + 1) in self._42_cells_set:
+                continue
+            self._open_walls(x, y, x, y + 1, SOUTH, NORTH)
