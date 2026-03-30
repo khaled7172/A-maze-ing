@@ -167,7 +167,7 @@ A set bit means the wall is **closed**. Example: `maze[0][0] & 1` is truthy if t
 ## Team & Project management
 
 ### Roles
-- khhammou: display.py, a_maze_ing.py, _add_loops, bonus prim's algorithm, Makefile, bug fixes and testing
+- khhammou: display.py, a_maze_ing.py, _add_loops, bonus prim's algorithm, Makefile, bug fixes and testing, implementing BFS for the solver
 - mkhanji: config.py, maze_generator.py, maze_solver.py, pyproject.toml
 
 ### Planning
@@ -201,30 +201,5 @@ A set bit means the wall is **closed**. Example: `maze[0][0] & 1` is truthy if t
 ### AI usage
 
 Claude (Anthropic) was used for:
-- Reviewing bug in `maze_solver.py` (unnamed 4th DIRS variable, silent empty-path return)
-- Replacing DFS solver with BFS to guarantee shortest path
 - Generating docstrings following PEP 257 / Google style
 - Drafting the README structure
-def _add_loops(self) -> None:
-    w, h = self.config.width, self.config.height
-    extra = (w * h) // 10
-
-    for _ in range(extra):
-        if self.rand.randint(0, 1) == 0:
-            # punch horizontal wall (EAST/WEST)
-            x = self.rand.randint(0, w - 2)
-            y = self.rand.randint(0, h - 1)
-            if (x, y) in self._42_cells_set:
-                continue
-            if (x + 1, y) in self._42_cells_set:
-                continue
-            self._open_walls(x, y, x + 1, y, EAST, WEST)
-        else:
-            # punch vertical wall (SOUTH/NORTH)
-            x = self.rand.randint(0, w - 1)
-            y = self.rand.randint(0, h - 2)
-            if (x, y) in self._42_cells_set:
-                continue
-            if (x, y + 1) in self._42_cells_set:
-                continue
-            self._open_walls(x, y, x, y + 1, SOUTH, NORTH)

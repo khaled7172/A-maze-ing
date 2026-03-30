@@ -307,22 +307,31 @@ class MazeGenerator:
                     frontiers.append((nnx, nny, nx, ny, wt, wh))
 
     def _add_loops(self) -> None:
+        w, h = self.config.width, self.config.height
+        extra = (w * h) // 10
+        for _ in range(extra):
+            if self.rand.randint(0, 1) == 0:
+                #  punch horizontal wall (EAST/WEST)
+                x = self.rand.randint(0, w - 2)
+                y = self.rand.randint(0, h - 1)
+                if (x, y) in self._42_cells_set:
+                    continue
+                if (x + 1, y) in self._42_cells_set:
+                    continue
+                self._open_walls(x, y, x + 1, y, EAST, WEST)
+            else:
+                #  punch vertical wall (SOUTH/NORTH)
+                x = self.rand.randint(0, w - 1)
+                y = self.rand.randint(0, h - 2)
+                if (x, y) in self._42_cells_set:
+                    continue
+                if (x, y + 1) in self._42_cells_set:
+                    continue
+                self._open_walls(x, y, x, y + 1, SOUTH, NORTH)
         """
         Remove random interior walls to create loops for imperfect maze.
         """
-        w, h = self.config.width, self.config.height
-        extra = (w * h) // 10  # remove ~10% extra walls
 
-        for _ in range(extra):
-            x = self.rand.randint(0, w - 2)
-            y = self.rand.randint(0, h - 2)
-
-            if (x, y) in self._42_cells_set:
-                continue
-            if (x + 1, y) in self._42_cells_set:
-                continue
-
-            self._open_walls(x, y, x + 1, y, EAST, WEST)
     """
     This writes the maze to a file
     format(cell, "X") converts the cell's number to uppercase hex

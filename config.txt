@@ -2,10 +2,10 @@
 # All keys are mandatory except SEED
 
 WIDTH=10
-HEIGHT=9
+HEIGHT=10
 ENTRY=0,0
-EXIT=9,8
+EXIT=9,9
 OUTPUT_FILE=maze.txt
-PERFECT=False
+PERFECT=True
 SEED=42
 ALGORITHM=PRIMS
