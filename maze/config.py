@@ -130,10 +130,12 @@ def load_config(config: str) -> MazeConfig:
         elif key == "SEED":
             temp_config["seed"] = int(value)
         elif key == "ALGORITHM":
-            if value.upper() not in ("DFS", "PRIMS", "ALDOUS", "DIVISION"):
+            if value.upper() not in (
+                    "DFS", "PRIMS", "ALDOUS", "DIVISION",
+                    "WILSON", "BINARYTREE"):
                 raise ValueError(
-                    "ALGORITHM must be 'DFS', 'PRIMS', 'ALDOUS', or"
-                    " 'DIVISION'"
+                    "ALGORITHM must be 'DFS', 'PRIMS', 'ALDOUS',"
+                    " 'DIVISION', 'WILSON', or 'BINARYTREE'"
                 )
             temp_config["algorithm"] = value.upper()
 

@@ -269,6 +269,10 @@ class MazeGenerator:
             self._aldous_broder()
         elif self.config.algorithm == "DIVISION":
             self._recursive_division()
+        elif self.config.algorithm == "WILSON":
+            self._wilson()
+        elif self.config.algorithm == "BINARYTREE":
+            self._binary_tree()
         else:
             self._dfs(x, y)
         if not self.config.perfect:
@@ -354,7 +358,8 @@ class MazeGenerator:
                         self._open_walls(x, y, nx, ny, wall_here, wall_there)
                         self.visited[ny][nx] = True
                         visited_count += 1
-                    # Move to the neighbour regardless of whether it was visited
+                    # Move to the neighbour regardless of
+                    # whether it was visited
                     x, y = nx, ny
                     break
 
@@ -454,6 +459,116 @@ class MazeGenerator:
             # Recurse into the two halves
             self._divide(x, y, wall_x - x, height)
             self._divide(wall_x, y, x + width - wall_x, height)
+
+    def _wilson(self) -> None:
+        """Generate a perfect maze using Wilson's algorithm (loop-erased walk).
+
+        Pick any unvisited cell and do a random walk until a visited cell is
+        reached. If the walk loops back on itself, erase the loop. Once a
+        visited cell is reached, carve the entire recorded path into the maze.
+        Repeat until every non-42 cell is visited.
+        """
+        w, h = self.config.width, self.config.height
+
+        # Mark the entry cell as the first visited cell to seed the algorithm
+        sx, sy = self.config.entry
+        self.visited[sy][sx] = True
+
+        # Build a list of all unvisited non-42 cells
+        unvisited: list[tuple[int, int]] = [
+            (x, y)
+            for y in range(h)
+            for x in range(w)
+            if not self.visited[y][x]
+            and (x, y) not in self._42_cells_set
+        ]
+
+        while unvisited:
+            # Pick a random unvisited cell to start a walk from
+            start = unvisited[self.rand.randint(0, len(unvisited) - 1)]
+
+            # path stores the walk order, came_from maps each cell to how we
+            # arrived at it so we know which wall to carve
+            walk: list[tuple[int, int]] = [start]
+            came_from: dict[
+                tuple[int, int],
+                tuple[int, int, int, int]
+            ] = {}
+
+            cx, cy = start
+
+            while not self.visited[cy][cx]:
+                directions = DIRS[:]
+                self.rand.shuffle(directions)
+
+                for dx, dy, wall_here, wall_there in directions:
+                    nx, ny = cx + dx, cy + dy
+                    if (
+                        0 <= nx < w
+                        and 0 <= ny < h
+                        and (nx, ny) not in self._42_cells_set
+                    ):
+                        came_from[(nx, ny)] = (cx, cy, wall_here, wall_there)
+
+                        if (nx, ny) in walk:
+                            # Loop detected — erase everything after loop start
+                            loop_start = walk.index((nx, ny))
+                            for cell in walk[loop_start + 1:]:
+                                came_from.pop(cell, None)
+                            walk = walk[:loop_start + 1]
+                        else:
+                            walk.append((nx, ny))
+
+                        cx, cy = nx, ny
+                        break
+
+            # Walk reached a visited cell — carve the whole path
+            for cell in walk:
+                if cell in came_from:
+                    px, py, wall_here, wall_there = came_from[cell]
+                    self._open_walls(
+                        px, py, cell[0], cell[1], wall_here, wall_there
+                    )
+                self.visited[cell[1]][cell[0]] = True
+
+            # Rebuild unvisited list
+            unvisited = [
+                (x, y)
+                for y in range(h)
+                for x in range(w)
+                if not self.visited[y][x]
+                and (x, y) not in self._42_cells_set
+            ]
+
+    def _binary_tree(self) -> None:
+        """Generate a maze using the Binary Tree algorithm.
+
+        For every cell, randomly carve either north or east. If north is out
+        of bounds, carve east. If east is out of bounds, carve north. The
+        top-right corner has nowhere to go so it stays walled on those sides.
+        Produces mazes with a strong diagonal bias toward the top-right corner.
+        """
+        w, h = self.config.width, self.config.height
+
+        for y in range(h):
+            for x in range(w):
+                if (x, y) in self._42_cells_set:
+                    continue
+
+                can_north = y > 0 and (x, y - 1) not in self._42_cells_set
+                can_east = (
+                    x < w - 1 and (x + 1, y) not in self._42_cells_set
+                )
+
+                if can_north and can_east:
+                    if self.rand.randint(0, 1) == 0:
+                        self._open_walls(x, y, x, y - 1, NORTH, SOUTH)
+                    else:
+                        self._open_walls(x, y, x + 1, y, EAST, WEST)
+                elif can_north:
+                    self._open_walls(x, y, x, y - 1, NORTH, SOUTH)
+                elif can_east:
+                    self._open_walls(x, y, x + 1, y, EAST, WEST)
 
     def _add_loops(self) -> None:
         """Remove random interior walls to create loops for imperfect maze."""
