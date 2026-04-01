@@ -1,5 +1,7 @@
 """
-Maze generation module using recursive DFS backtracker.
+Maze generation module.
+Supports four algorithms: DFS, PRIMS, ALDOUS, DIVISION.
+
 Wall encoding (bitmask per cell):
     Bit 0 (1) = North
     Bit 1 (2) = East
@@ -120,7 +122,9 @@ def _get_42_cells(offset_x: int, offset_y: int) -> list[tuple[int, int]]:
 
 
 class MazeGenerator:
-    """Generate a maze using recursive DFS (perfect maze by default).
+    """Generate a maze using one of four algorithms.
+
+    Supported algorithms: DFS, PRIMS, ALDOUS, DIVISION.
 
     Args:
         config: A MazeConfig instance with all generation parameters.
@@ -133,7 +137,8 @@ class MazeGenerator:
         cfg = MazeConfig(
             width=20, height=20,
             entry=(0, 0), exit=(19, 19),
-            perfect=True, output_file="maze.txt", seed=42)
+            perfect=True, output_file="maze.txt", seed=42,
+            algorithm="ALDOUS")
         gen = MazeGenerator(cfg)
         maze = gen.generate()   # List[List[int]] — bitmask per cell
         gen.save_hex()          # writes output file
@@ -260,6 +265,10 @@ class MazeGenerator:
         x, y = self.config.entry
         if self.config.algorithm == "PRIMS":
             self._prims(x, y)
+        elif self.config.algorithm == "ALDOUS":
+            self._aldous_broder()
+        elif self.config.algorithm == "DIVISION":
+            self._recursive_division()
         else:
             self._dfs(x, y)
         if not self.config.perfect:
@@ -270,8 +279,8 @@ class MazeGenerator:
         """Generate maze using Prim's algorithm.
 
         Args:
-        x: Starting cell x coordinate.
-        y: Starting cell y coordinate.
+            x: Starting cell x coordinate.
+            y: Starting cell y coordinate.
         """
         self.visited[y][x] = True
         frontiers = []
@@ -306,12 +315,154 @@ class MazeGenerator:
                 ):
                     frontiers.append((nnx, nny, nx, ny, wt, wh))
 
-    def _add_loops(self) -> None:
+    def _aldous_broder(self) -> None:
+        """Generate a perfect maze using the Aldous-Broder algorithm.
+
+        Performs a random walk across the grid. The first time a cell is
+        visited, carve the wall from the previous cell to it. Continue
+        until every non-42 cell has been visited.
+        """
         w, h = self.config.width, self.config.height
-        extra = (w * h) // 10
+
+        # Count how many cells need to be visited (exclude 42 cells)
+        total = w * h - len(self._42_cells_set)
+
+        # Pick a random starting cell that is not a 42 cell
+        while True:
+            x = self.rand.randint(0, w - 1)
+            y = self.rand.randint(0, h - 1)
+            if (x, y) not in self._42_cells_set:
+                break
+
+        self.visited[y][x] = True
+        visited_count = 1
+
+        while visited_count < total:
+            # Pick a random neighbour (any, not just unvisited)
+            directions = DIRS[:]
+            self.rand.shuffle(directions)
+
+            for dx, dy, wall_here, wall_there in directions:
+                nx, ny = x + dx, y + dy
+                if (
+                    0 <= nx < w
+                    and 0 <= ny < h
+                    and (nx, ny) not in self._42_cells_set
+                ):
+                    if not self.visited[ny][nx]:
+                        # First time visiting this neighbour — carve the wall
+                        self._open_walls(x, y, nx, ny, wall_here, wall_there)
+                        self.visited[ny][nx] = True
+                        visited_count += 1
+                    # Move to the neighbour regardless of whether it was visited
+                    x, y = nx, ny
+                    break
+
+    def _recursive_division(self) -> None:
+        """Generate a maze using recursive division.
+
+        Unlike DFS and Prim's, this algorithm starts with a fully OPEN grid
+        and adds walls. It splits a region in half with a wall, leaves one
+        gap in it, then recursively does the same to each half.
+        """
+        w, h = self.config.width, self.config.height
+
+        # Start with all interior walls open — clear all wall bits except
+        # the outer border
+        for y in range(h):
+            for x in range(w):
+                walls = 0
+                if y == 0:
+                    walls |= NORTH
+                if x == w - 1:
+                    walls |= EAST
+                if y == h - 1:
+                    walls |= SOUTH
+                if x == 0:
+                    walls |= WEST
+                self.maze[y][x] = walls
+
+        # Recursively divide the full grid
+        self._divide(0, 0, w, h)
+
+    def _divide(
+            self,
+            x: int,
+            y: int,
+            width: int,
+            height: int) -> None:
+        """Recursively divide a region by adding a wall with one passage.
+
+        Args:
+            x: Left edge of the region.
+            y: Top edge of the region.
+            width: Width of the region in cells.
+            height: Height of the region in cells.
+        """
+        # Base case: region is too small to divide
+        if width < 2 or height < 2:
+            return
+
+        # Choose direction: divide horizontally or vertically
+        # Bias toward dividing the longer axis for more balanced mazes
+        if width > height:
+            horizontal = False
+        elif height > width:
+            horizontal = True
+        else:
+            horizontal = self.rand.randint(0, 1) == 0
+
+        if horizontal:
+            # Draw a horizontal wall somewhere inside the region
+            # wall_y is the row just below which we place the wall
+            wall_y = y + self.rand.randint(1, height - 1)
+            # Pick one random gap cell — the passage through the wall
+            gap_x = x + self.rand.randint(0, width - 1)
+
+            for cx in range(x, x + width):
+                if cx == gap_x:
+                    continue
+                # Skip 42 cells — don't add walls through them
+                if (cx, wall_y - 1) in self._42_cells_set:
+                    continue
+                if (cx, wall_y) in self._42_cells_set:
+                    continue
+                # Add south wall to the cell above and north wall to cell below
+                self.maze[wall_y - 1][cx] |= SOUTH
+                self.maze[wall_y][cx] |= NORTH
+
+            # Recurse into the two halves
+            self._divide(x, y, width, wall_y - y)
+            self._divide(x, wall_y, width, y + height - wall_y)
+
+        else:
+            # Draw a vertical wall somewhere inside the region
+            wall_x = x + self.rand.randint(1, width - 1)
+            gap_y = y + self.rand.randint(0, height - 1)
+
+            for cy in range(y, y + height):
+                if cy == gap_y:
+                    continue
+                if (wall_x - 1, cy) in self._42_cells_set:
+                    continue
+                if (wall_x, cy) in self._42_cells_set:
+                    continue
+                # Add east wall to the cell on the left and west to the right
+                self.maze[cy][wall_x - 1] |= EAST
+                self.maze[cy][wall_x] |= WEST
+
+            # Recurse into the two halves
+            self._divide(x, y, wall_x - x, height)
+            self._divide(wall_x, y, x + width - wall_x, height)
+
+    def _add_loops(self) -> None:
+        """Remove random interior walls to create loops for imperfect maze."""
+        w, h = self.config.width, self.config.height
+        extra = (w * h) // 10  # remove ~10% extra walls
+
         for _ in range(extra):
             if self.rand.randint(0, 1) == 0:
-                #  punch horizontal wall (EAST/WEST)
+                # punch horizontal wall (EAST/WEST)
                 x = self.rand.randint(0, w - 2)
                 y = self.rand.randint(0, h - 1)
                 if (x, y) in self._42_cells_set:
@@ -320,7 +471,7 @@ class MazeGenerator:
                     continue
                 self._open_walls(x, y, x + 1, y, EAST, WEST)
             else:
-                #  punch vertical wall (SOUTH/NORTH)
+                # punch vertical wall (SOUTH/NORTH)
                 x = self.rand.randint(0, w - 1)
                 y = self.rand.randint(0, h - 2)
                 if (x, y) in self._42_cells_set:
@@ -328,9 +479,6 @@ class MazeGenerator:
                 if (x, y + 1) in self._42_cells_set:
                     continue
                 self._open_walls(x, y, x, y + 1, SOUTH, NORTH)
-        """
-        Remove random interior walls to create loops for imperfect maze.
-        """
 
     """
     This writes the maze to a file
@@ -340,6 +488,11 @@ class MazeGenerator:
 
     def save_hex(
             self, solution_path: list[tuple[int, int]] | None = None) -> None:
+        """Write the maze grid and optional solution path to the output file.
+
+        Args:
+            solution_path: Optional list of (x, y) cells from entry to exit.
+        """
         path = self.config.output_file
         with open(path, "w") as f:
             for row in self.maze:
@@ -364,7 +517,14 @@ then based on the difference it appends the correct letter
 
 
 def _path_to_directions(path: list[tuple[int, int]]) -> list[str]:
+    """Convert a list of (x, y) coordinates into direction letters.
 
+    Args:
+        path: Ordered list of (x, y) cells.
+
+    Returns:
+        List of direction characters: N, E, S, or W.
+    """
     dirs: list[str] = []
     for i in range(len(path) - 1):
         x0, y0 = path[i]
