@@ -202,4 +202,4 @@ A set bit means the wall is **closed**. Example: `maze[0][0] & 1` is truthy if t
 
 Claude (Anthropic) was used for:
 - Generating docstrings following PEP 257 / Google style
-- Drafting the README structure
+- Drafting the README structure# A-maz-ing
